@@ -45,7 +45,13 @@ public class GraphTest {
 
     @Test
     public void testAddVertex() throws Exception {
+        /*
+        Vertex v1 = createV("v1");
+        Graph g = createG(v1);
 
+        // fail
+        g.addVertex(null);
+         */
     }
 
     @Test
