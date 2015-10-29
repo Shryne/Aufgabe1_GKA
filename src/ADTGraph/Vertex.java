@@ -10,30 +10,22 @@ public class Vertex {
     // ##########################################
     // vars
     // ##########################################
-    private class Attribute {
-        public final String name;
-        public final int value;
+    private final String vertexName;
 
-        public Attribute(String name, int value) {
-            this.name = name;
-            this.value = value;
-        }
-    }
+    private ArrayList<String> attributeNames = new ArrayList<>();
+    private ArrayList<Integer> attributeValues = new ArrayList<>();
 
-    private final String name;
-    private final ArrayList<Attribute> attributes = new ArrayList<>();
-
-    private static final ArrayList<String> vertexes = new ArrayList<>(64);
+    private static final ArrayList<String> vertexes = new ArrayList<>();
     // ##########################################
     // methods
     // ##########################################
     private Vertex(String name) {
-        this.name = name;
+        vertexes.add(name);
+        vertexName = name;
     }
 
     public static Vertex createV(String name) {
         if (vertexes.contains(name)) return null;
-        vertexes.add(name);
         return new Vertex(name);
     }
     // ##########################################
@@ -47,14 +39,16 @@ public class Vertex {
     // invisible
     // ##########################################
     void addAttribute(String name, int value) {
-        attributes.add(new Attribute(name, value));
+        attributeNames.add(name);
+        attributeValues.add(value);
     }
 
     Integer getValue(String name) {
-        for (Attribute a : attributes)
-            if (a.name.equals(name)) return a.value;
+        int attributeIndex = attributeNames.indexOf(name);
+        if (attributeIndex != -1)
+            return attributeValues.get(attributeIndex);
         return null;
     }
 
-    String getName() { return name; }
+    String getName() { return vertexName; }
 }

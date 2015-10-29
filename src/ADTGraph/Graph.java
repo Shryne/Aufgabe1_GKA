@@ -2,8 +2,7 @@ package ADTGraph;
 
 import java.io.File;
 import java.lang.reflect.Array;
-import java.util.ArrayList;
-import java.util.HashMap;
+import java.util.*;
 
 /**
  * Created by remen on 27.10.15.
@@ -12,33 +11,34 @@ public class Graph {
     // ##########################################
     // vars
     // ##########################################
-    private class Attributes {
-        public final ArrayList<String> names = new ArrayList<>();
-        public final ArrayList<Integer> values = new ArrayList<>();
-    }
+    private class Edge {
+        public final Vertex source;
+        public final Vertex target;
 
-    private class Range {
-        public final int min, max;
+        public ArrayList<String> names = new ArrayList<>();
+        public ArrayList<Integer> values = new ArrayList<>();
 
-        public Range(int min, int max) {
-            this.min = min;
-            this.max = max;
+        public Edge(Vertex source, Vertex target) {
+            this.target = target;
+            this.source = source;
+        }
+
+        public void addAttribute(String name, int value) {
+            names.add(name);
+            values.add(value);
         }
     }
 
     private ArrayList<Vertex> vertexes = new ArrayList<>();
-
-    private ArrayList<Vertex> edges = new ArrayList<>();
-    private ArrayList<Attributes> edgeAttributes = new ArrayList<>();
-
-    private enum GraphVariants { GRAPH, DIGRAPH, }
-    private final GraphVariants graphVariant = GraphVariants.GRAPH;
+    private ArrayList<Edge> edges = new ArrayList<>();
     // ##########################################
     // methods
     // ##########################################
     private Graph(Vertex vertex) {
         vertexes.add(vertex);
     }
+    private enum GraphVariants { GRAPH, DIGRAPH, }
+    private final GraphVariants graphVariant = GraphVariants.GRAPH;
     public static Graph createG(Vertex vertex) {
         return new Graph(vertex);
     }
@@ -49,27 +49,24 @@ public class Graph {
     }
 
     public Graph deleteVertex(Vertex vertex) {
-        if (vertexes.size() > 1) {
-            vertexes.remove(vertex);
+        if (vertexes.size() > 1) { // precondition
             deleteEdges(vertex);
+            vertexes.remove(vertex);
         }
         return this;
     }
 
     public Graph addEdge(Vertex v1, Vertex v2) {
-        if (vertexes.contains(v1) && vertexes.contains(v2)) {
-            edges.add(v1);
-            edges.add(v2);
-        }
+        if (vertexes.contains(v1) && vertexes.contains(v2))
+            edges.add(new Edge(v1, v2));
+
         return this;
     }
 
     public Graph setAtE(Vertex v1, Vertex v2, String name, int value) {
-        Range range = getEdgeIndex(v1, v2, 0);
-        if (range != null) {
-            edgeAttributes.get(range.min).names.add(name);
-            edgeAttributes.get(range.min).values.add(value);
-        }
+        for (Edge e : edges)
+            if (e.source == v1 && e.target == v2)
+                e.addAttribute(name, value);
         return this;
     }
 
@@ -87,61 +84,77 @@ public class Graph {
     }
 
     public ArrayList<Vertex> getIncident(Vertex vertex) {
-        if (vertex == null) return null;
+        if (vertex == null) return null; // precondition
         ArrayList<Vertex> incidents = new ArrayList<>();
 
-        for (int i = 0; i < vertexes.size(); i += 2) { // vertex --> others
-            if (vertexes.get(i) == vertex) {
-                incidents.add(vertex);              // vertex
-                incidents.add(vertexes.get(i + 1)); // other
-            }
-        }
+        for (Edge e : edges)
+            if (e.source == vertex)
+                addTwo(incidents, e.source, e.target);
 
-        for (int i = 1; i < vertexes.size(); i += 2) { // others --> vertex
-            if (vertexes.get(i) == vertex) {
-                incidents.add(vertexes.get(i));
-                incidents.add(vertex);
-            }
-        }
         return incidents;
     }
 
     public ArrayList<Vertex> getAdjacent(Vertex vertex) {
-        if (vertex == null) return null;
+        if (vertex == null) return null; // precondition
         ArrayList<Vertex> adjacent = new ArrayList<>();
 
-        for (int i = 0; i < vertexes.size(); i += 2)
-            if (vertexes.get(i) == vertex)
-                adjacent.add(vertexes.get(i + 1));
-
-        for (int i = 1; i < vertexes.size(); i += 2)
-            if (vertexes.get(i) == vertex)
-                adjacent.add(vertexes.get(i));
+        for (Edge e : edges)
+            if      (e.source == vertex) adjacent.add(e.target);
+            else if (e.target == vertex) adjacent.add(e.source);
 
         return adjacent;
     }
 
     public ArrayList<Vertex> getTarget(Vertex vertex) {
-        return null;
+        ArrayList<Vertex> targets = new ArrayList<>();
+
+        for (Edge e : edges)
+            if (e.source == vertex)
+                targets.add(e.target);
+
+        return targets;
     }
 
     public ArrayList<Vertex> getSource(Vertex vertex) {
-        return null;
+        ArrayList<Vertex> sources = new ArrayList<>();
+
+        for (Edge e : edges)
+            if (e.target == vertex)
+                sources.add(e.source);
+
+        return sources;
     }
 
     public ArrayList<Vertex> getEdges() {
-        return null;
+        ArrayList<Vertex> edgeVertices = new ArrayList<>();
+
+        for (Edge e : edges) {
+            edgeVertices.add(e.source);
+            edgeVertices.add(e.target);
+        }
+
+        return edgeVertices;
     }
 
     public ArrayList<Vertex> getVertexes() {
-        return null;
+        return vertexes;
     }
 
     public int getValE(Vertex v1, Vertex v2, String name) {
+        for (Edge e : edges)
+            if (e.source == v1 && e.target == v2) {
+                int attributeIndex = e.names.indexOf(name);
+                return e.values.get(attributeIndex);
+            }
+
         return 0;
     }
 
     public int getValV(Vertex vertex, String name) {
+        for (Vertex v : vertexes)
+            if (v.getName().equals(vertex.getName()))
+                return vertex.getValue(name);
+
         return 0;
     }
     // ##########################################
@@ -155,17 +168,17 @@ public class Graph {
     // invisible
     // ##########################################
     private void deleteEdges(Vertex vertex) {
+        Iterator<Edge> i = edges.iterator();
 
+        while (i.hasNext()) {
+            Edge actualEdge = i.next();
+            if (actualEdge.source == vertex || actualEdge.target == vertex)
+                i.remove();
+        }
     }
 
-    private Range getEdgeIndex(Vertex v1, Vertex v2, int startIndex) {
-        for (int i = startIndex; i < edges.size() - 1; i++)
-            if (edgeEquals(v1, v2, i)) return new Range(i, i + 1);
-        return null;
-    }
-
-    private boolean edgeEquals(Vertex v1, Vertex v2, int index) {
-        return (edges.get(index) == v1 && edges.get(index + 1) == v2) ||
-                (edges.get(index) == v2 && edges.get(index + 1) == v1);
+    private void addTwo(List destiny, Object element1, Object element2) {
+        destiny.add(element1);
+        destiny.add(element2);
     }
 }
