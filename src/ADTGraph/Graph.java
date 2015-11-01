@@ -1,8 +1,17 @@
 package ADTGraph;
 
+import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileReader;
+import java.io.IOException;
 import java.lang.reflect.Array;
+import java.nio.charset.Charset;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.*;
+
+import static java.nio.file.Files.readAllBytes;
+import static java.nio.file.Paths.get;
 
 /**
  * Created by remen on 27.10.15.
@@ -27,24 +36,39 @@ public class Graph {
             names.add(name);
             values.add(value);
         }
+
+        public int getValue(String name) {
+            int attributeIndex = names.indexOf(name);
+            if (attributeIndex == -1) return 0;
+
+            return values.get(attributeIndex);
+        }
     }
 
+    private final boolean directedGraph;
+
     private ArrayList<Vertex> vertexes = new ArrayList<>();
+    private ArrayList<ArrayList<String>> vertexNames = new ArrayList<>();
+    private ArrayList<ArrayList<Integer>> vertexValues = new ArrayList<>();
+
     private ArrayList<Edge> edges = new ArrayList<>();
     // ##########################################
     // methods
     // ##########################################
-    private Graph(Vertex vertex) {
-        vertexes.add(vertex);
+    private Graph(Vertex vertex, boolean directed) {
+        addVertex(vertex);
+        directedGraph = directed;
     }
-    private enum GraphVariants { GRAPH, DIGRAPH, }
-    private final GraphVariants graphVariant = GraphVariants.GRAPH;
-    public static Graph createG(Vertex vertex) {
-        return new Graph(vertex);
+
+    public static Graph createG(Vertex vertex, boolean directed) {
+        if (vertex == null) return null;
+        return new Graph(vertex, directed);
     }
 
     public Graph addVertex(Vertex vertex) {
         vertexes.add(vertex);
+        vertexNames.add(new ArrayList<>());
+        vertexValues.add(new ArrayList<>());
         return this;
     }
 
@@ -57,7 +81,8 @@ public class Graph {
     }
 
     public Graph addEdge(Vertex v1, Vertex v2) {
-        if (vertexes.contains(v1) && vertexes.contains(v2))
+        if (vertexes.contains(v1) && vertexes.contains(v2) &&
+                !containsEdge(v1, v2, directedGraph))
             edges.add(new Edge(v1, v2));
 
         return this;
@@ -71,11 +96,21 @@ public class Graph {
     }
 
     public Graph setAtV(Vertex vertex, String name, int value) {
-        if (vertexes.contains(vertex)) vertex.addAttribute(name, value);
+        if (vertex == null || name == null || name.equals("") || name.contains(" ")) return this;
+
+        if (vertexes.contains(vertex)) addAttribute(vertex, name, value);
         return this;
     }
 
-    public Graph importG(String filename) {
+    public static Graph importG(String filename) {
+        try {
+            Scanner input = new Scanner(new File(filename)).useDelimiter("\\s*,\\s*");
+            //boolean directedGraph = importGraphVariation(input.nextLine());
+
+            //ArrayList<Vertex> vertexes = importVertexes(input);
+
+            return createG(Vertex.createV("N1"), false);
+        } catch (IOException e) { e.printStackTrace(); }
         return null;
     }
 
@@ -142,20 +177,25 @@ public class Graph {
 
     public int getValE(Vertex v1, Vertex v2, String name) {
         for (Edge e : edges)
-            if (e.source == v1 && e.target == v2) {
-                int attributeIndex = e.names.indexOf(name);
-                return e.values.get(attributeIndex);
-            }
+            if (e.source == v1 && e.target == v2)
+                return e.getValue(name);
+            else if (!directedGraph && e.source == v2 && e.target == v1)
+                return e.getValue(name);
+
 
         return 0;
     }
 
     public int getValV(Vertex vertex, String name) {
-        for (Vertex v : vertexes)
-            if (v.getName().equals(vertex.getName()))
-                return vertex.getValue(name);
+        if (vertex == null || name == null) return 0;
 
-        return 0;
+        int vertexIndex = vertexes.indexOf(vertex);
+        if (vertexIndex == -1) return 0;
+
+        int attributeIndex = vertexNames.get(vertexIndex).indexOf(name);
+        if (attributeIndex == -1) return 0;
+
+        return vertexValues.get(vertexIndex).get(attributeIndex);
     }
     // ##########################################
     // bonus
@@ -177,8 +217,28 @@ public class Graph {
         }
     }
 
+    private boolean containsEdge(Vertex v1, Vertex v2, boolean directedGraph) {
+        if (directedGraph) return containsVertexCombo(v1, v2);
+
+        return containsVertexCombo(v1, v2) || containsVertexCombo(v2, v1);
+    }
+
+    private boolean containsVertexCombo(Vertex v1, Vertex v2) {
+        for (Edge e : edges)
+            if (e.source == v1 && e.target == v2) return true;
+
+        return false;
+    }
+
     private void addTwo(List destiny, Object element1, Object element2) {
         destiny.add(element1);
         destiny.add(element2);
+    }
+
+    private void addAttribute(Vertex vertex, String name, int value) {
+        int index = vertexes.indexOf(vertex);
+
+        vertexNames.get(index).add(name);
+        vertexValues.get(index).add(value);
     }
 }
