@@ -55,6 +55,12 @@ public class Graph {
     // ##########################################
     // methods
     // ##########################################
+
+    /**
+     * This private constructor makes importG a lot easier.
+     */
+    private Graph(boolean directed) { directedGraph = directed; }
+
     private Graph(Vertex vertex, boolean directed) {
         addVertex(vertex);
         directedGraph = directed;
@@ -104,10 +110,32 @@ public class Graph {
 
     public static Graph importG(String filename) {
         try {
-            Scanner input = new Scanner(new File(filename)).useDelimiter("\\s*,\\s*");
-            //boolean directedGraph = importGraphVariation(input.nextLine());
+            Scanner input = new Scanner(new File(filename)).useDelimiter("\\s*[,\\n]\\s*");
+            boolean directedGraph = importGraphVariation(input.nextLine());
 
-            //ArrayList<Vertex> vertexes = importVertexes(input);
+            ArrayList<Vertex> vertexes = new ArrayList<>();
+            ArrayList<ArrayList<Integer>> values = new ArrayList<>();
+
+            while (input.hasNextLine()) {
+                vertexes.add(Vertex.createV(input.next()));
+                vertexes.add(Vertex.createV(input.next()));
+
+                values.add(new ArrayList<>());
+                while (input.hasNextInt())
+                    values.get(values.size() - 1).add(input.nextInt());
+            }
+
+            Graph graph = new Graph(directedGraph);
+
+            for (int i = 0; i < vertexes.size(); i += 2) {
+                graph.addVertex(vertexes.get(i));
+                graph.addVertex(vertexes.get(i +  1));
+
+                graph.addEdge(vertexes.get(i), vertexes.get(i + 1));
+
+                for (int i = 0; i < )
+                graph.setAtE(vertexes.get(i), vertexes.get(i + 1), i / 2 + "", values.get(i / 2).get());
+            }
 
             return createG(Vertex.createV("N1"), false);
         } catch (IOException e) { e.printStackTrace(); }
@@ -115,6 +143,7 @@ public class Graph {
     }
 
     public File exportG(String filename) {
+
         return null;
     }
 
@@ -240,5 +269,20 @@ public class Graph {
 
         vertexNames.get(index).add(name);
         vertexValues.get(index).add(value);
+    }
+
+    private static Boolean importGraphVariation(String string) {
+        if (string.equals("#gerichtet")) return true;
+        if (string.equals("#ungerichtet")) return false;
+        return null;
+    }
+
+    private static ArrayList<Vertex> importVertexes(Scanner input) {
+        ArrayList<Vertex> result = new ArrayList<>();
+
+        while (input.hasNext())
+            result.add(Vertex.createV(input.next()));
+
+        return result;
     }
 }
