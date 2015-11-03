@@ -7,6 +7,7 @@ import org.junit.Test;
 import java.lang.reflect.Array;
 import java.util.*;
 
+import static ADTGraph.Graph.importG;
 import static ADTGraph.Vertex.createV;
 import static ADTGraph.Graph.createG;
 import static org.junit.Assert.*;
@@ -69,7 +70,7 @@ public class GraphTest {
         graph1.addVertex(v3);
         graph1.addVertex(v4);
 
-        List<Vertex> result = Arrays.asList(v4, v2, v3, v1);
+        List<Vertex> result = toList(v4, v2, v3, v1);
         assertTrue(arrayEquals(result, graph1.getVertexes()));
 
         graph1.deleteVertex(v4);
@@ -82,47 +83,70 @@ public class GraphTest {
         graph1.addVertex(v3);
         graph1.addVertex(v4);
 
-        result = Arrays.asList(v4, v2, v3, v1);
+        result = toList(v4, v2, v3, v1);
         assertTrue(arrayEquals(result, graph1.getVertexes()));
 
         graph1.deleteVertex(v2);
         graph1.deleteVertex(v3);
         graph1.deleteVertex(v1);
-        assertTrue(arrayEquals(Arrays.asList(v4), graph1.getVertexes()));
+        assertTrue(arrayEquals(toList(v4), graph1.getVertexes()));
 
         // delete last
         graph1.deleteVertex(v4);
-        assertTrue(arrayEquals(Arrays.asList(v4), graph1.getVertexes()));
+        assertTrue(arrayEquals(toList(v4), graph1.getVertexes()));
 
         // delete inexistent and more
         graph1.deleteVertex(v2);
         graph1.deleteVertex(v2);
 
-        result = Arrays.asList(v4);
+        result = toList(v4);
         assertTrue(arrayEquals(result, graph1.getVertexes()));
 
         // add same twice
         graph1.addVertex(v1);
         graph1.addVertex(v2);
 
-        result = Arrays.asList(v1, v2, v4);
+        result = toList(v1, v2, v4);
         assertTrue(arrayEquals(result, graph1.getVertexes()));
 
         // add same in two graphs
         Graph graph2 = createG(v4, true);
         graph2.addVertex(v2);
 
-        result = Arrays.asList(v1, v2, v4);
+        result = toList(v1, v2, v4);
         assertTrue(arrayEquals(result, graph1.getVertexes()));
 
-        result = Arrays.asList(v2, v4);
+        result = toList(v2, v4);
         assertTrue(arrayEquals(result, graph2.getVertexes()));
     }
 
 
     @Test
     public void testImportG() throws Exception {
-        // TODO
+        Graph graph = importG("graph_03.txt");
+
+        Vertex s = v("s");
+        Vertex u = v("u");
+        Vertex x = v("x");
+        Vertex y = v("y");
+        Vertex v = v("v");
+
+        List<Vertex> result = toList(
+                s, u,
+                s, x,
+                u, v,
+                u, x,
+                x, u,
+                x, y,
+                y, s,
+                y, v,
+                v, y);
+
+        assertTrue(edgeEquals(graph.getEdges(), result));
+        assertTrue(arrayEquals(graph.getVertexes(), result));
+
+        assertEquals(graph.getValE(s, u, "0"), 10);
+        assertEquals(graph.getValE(s, x, "0"), 5);
     }
 
     @Test
@@ -153,17 +177,17 @@ public class GraphTest {
         graph.addEdge(v4, v1);
         graph.addEdge(v2, v4);
 
-        List<Vertex> result = Arrays.asList(v1, v4);
+        List<Vertex> result = toList(v1, v4);
         assertTrue(arrayEquals(graph.getSource(v2), result));
         assertTrue(arrayEquals(graph.getTarget(v2), result));
 
-        result = Arrays.asList(v1, v2, v4, v5, v4, v1, v2, v4);
+        result = toList(v1, v2, v4, v5, v4, v1, v2, v4);
         assertTrue(arrayEquals(graph.getEdges(), result));
 
-        result = Arrays.asList(v1, v2, v1, v4);
+        result = toList(v1, v2, v1, v4);
         assertTrue(edgeEquals(graph.getIncident(v1), result));
 
-        result = Arrays.asList(v5, v1, v2);
+        result = toList(v5, v1, v2);
         assertTrue(arrayEquals(graph.getAdjacent(v4), result));
 
         // directed
@@ -181,18 +205,20 @@ public class GraphTest {
         graph.addEdge(v4, v1);
         graph.addEdge(v2, v4);
 
-        result = Arrays.asList(v1, v4);
+        result = toList(v1);
         assertTrue(arrayEquals(graph.getSource(v2), result));
+
+        result = toList(v1, v4);
         assertTrue(arrayEquals(graph.getTarget(v2), result));
 
-        result = Arrays.asList(v1, v2, v2, v1, v4, v5, v4, v1, v2, v4);
+        result = toList(v1, v2, v2, v1, v4, v5, v4, v1, v2, v4);
         assertTrue(arrayEquals(graph.getEdges(), result));
 
 
-        result = Arrays.asList(v1, v2, v1, v4);
+        result = toList(v1, v2, v2, v1, v1, v4);
         assertTrue(edgeEquals(graph.getIncident(v1), result));
 
-        result = Arrays.asList(v5, v1, v2);
+        result = toList(v5, v1, v2);
         assertTrue(arrayEquals(graph.getAdjacent(v4), result));
     }
 
@@ -305,59 +331,33 @@ public class GraphTest {
     // private helper
     // ####################################################
     private static boolean arrayEquals(List<Vertex> arr1, List<Vertex> arr2) {
-        sortArray(arr1);
-        sortArray(arr2);
+        Iterator<Vertex> i = arr2.iterator();
 
-        return compareArrays(arr1, arr2);
-    }
-
-    private static class Edge {
-        public final Vertex source;
-        public final Vertex target;
-
-        public Edge(Vertex source, Vertex target) {
-            this.source = source;
-            this.target = target;
+        while (i.hasNext()) {
+            Vertex actualVertex = i.next();
+            if (!arr1.contains(actualVertex)) return false;
+            else arr1.remove(actualVertex);
         }
+        return true;
     }
 
     private static boolean edgeEquals(List<Vertex> arr1, List<Vertex> arr2) {
-        List<Edge> edgeArr1 = toEdgeArray(arr1);
-        List<Edge> edgeArr2 = toEdgeArray(arr2);
-
-        sortArray(edgeArr1);
-        sortArray(edgeArr2);
-
-        return compareArrays(edgeArr1, edgeArr2);
-    }
-
-    private static void sortArray(List<?> arr) {
-        Comparator comparator = new Comparator<Object>() {
-            @Override
-            public int compare(Object o1, Object o2) {
-                if (o1.hashCode() > o2.hashCode()) return 1;
-                if (o1.hashCode() < o2.hashCode()) return -1;
-                return 1;
-            }
-        };
-        arr.sort(comparator);
-    }
-
-    private static List<Edge> toEdgeArray(List<Vertex> arr) {
-        List<Edge> result = new ArrayList<>();
-
-        for (int i = 0; i <= arr.size(); i++)
-            result.add(new Edge(arr.get(i), arr.get(i + 1)));
-
-        return result;
-    }
-
-    private static boolean compareArrays(List<?> arr1, List<?> arr2) {
         if (arr1.size() != arr2.size()) return false;
 
-        for (int i = 0; i < arr1.size(); i++)
-            if (arr1.get(i) != arr2.get(i)) return false;
-
+        Iterator<Vertex> i = arr1.iterator();
+        while (i.hasNext()) {
+            Vertex actualVertex = i.next();
+            if (!arr2.contains(i.next())) return false;
+            else arr2.remove(actualVertex);
+        }
         return true;
+    }
+    
+    private static List<Vertex> toList(Vertex... vertex) {
+        return new LinkedList<>(Arrays.asList(vertex));
+    }
+
+    private static Vertex v(String name) {
+        return createV(name);
     }
 }

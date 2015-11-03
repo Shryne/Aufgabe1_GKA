@@ -1,12 +1,11 @@
 package ADTGraph;
 
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.FileReader;
-import java.io.IOException;
+import java.io.*;
 import java.lang.reflect.Array;
 import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
 
@@ -66,6 +65,10 @@ public class Graph {
         directedGraph = directed;
     }
 
+    public static Graph createG(Vertex vertex) {
+        return createG(vertex, false);
+    }
+
     public static Graph createG(Vertex vertex, boolean directed) {
         if (vertex == null) return null;
         return new Graph(vertex, directed);
@@ -94,57 +97,83 @@ public class Graph {
         return this;
     }
 
-    public Graph setAtE(Vertex v1, Vertex v2, String name, int value) {
+    public Graph deleteEdge(Vertex v1, Vertex v2) {
+        deleteEdges(v1);
+        deleteEdges(v2);
+        return this;
+    }
+
+    public Graph setAtE(Vertex v1, Vertex v2, String name, int value) { //TODO exception
         for (Edge e : edges)
             if (e.source == v1 && e.target == v2)
                 e.addAttribute(name, value);
         return this;
     }
 
-    public Graph setAtV(Vertex vertex, String name, int value) {
+    public Graph setAtV(Vertex vertex, String name, int value) { //TODO exception
         if (vertex == null || name == null || name.equals("") || name.contains(" ")) return this;
 
         if (vertexes.contains(vertex)) addAttribute(vertex, name, value);
         return this;
     }
 
-    public static Graph importG(String filename) {
-        try {
-            Scanner input = new Scanner(new File(filename)).useDelimiter("\\s*[,\\n]\\s*");
-            boolean directedGraph = importGraphVariation(input.nextLine());
+    public static Graph importG(String filename) throws IOException { //TODO exception
+        Scanner input = new Scanner(new File(filename)).useDelimiter("\\s*[,\\n]\\s*");
+        boolean directedGraph = importGraphVariation(input.nextLine());
 
-            ArrayList<Vertex> vertexes = new ArrayList<>();
-            ArrayList<ArrayList<Integer>> values = new ArrayList<>();
+        ArrayList<Vertex> vertexes = new ArrayList<>();
+        ArrayList<ArrayList<Integer>> values = new ArrayList<>();
 
-            while (input.hasNextLine()) {
-                vertexes.add(Vertex.createV(input.next()));
-                vertexes.add(Vertex.createV(input.next()));
+        while (input.hasNextLine()) {
+            vertexes.add(Vertex.createV(input.next()));
+            vertexes.add(Vertex.createV(input.next()));
 
-                values.add(new ArrayList<>());
-                while (input.hasNextInt())
-                    values.get(values.size() - 1).add(input.nextInt());
-            }
+            values.add(new ArrayList<>());
+            while (input.hasNextInt())
+                values.get(values.size() - 1).add(input.nextInt());
+        }
 
-            Graph graph = new Graph(directedGraph);
+        Graph graph = new Graph(directedGraph);
 
-            for (int i = 0; i < vertexes.size(); i += 2) {
-                graph.addVertex(vertexes.get(i));
-                graph.addVertex(vertexes.get(i +  1));
+        for (int i = 0; i < vertexes.size(); i += 2) {
+            graph.addVertex(vertexes.get(i));
+            graph.addVertex(vertexes.get(i +  1));
 
-                graph.addEdge(vertexes.get(i), vertexes.get(i + 1));
+            graph.addEdge(vertexes.get(i), vertexes.get(i + 1));
 
-                for (int i = 0; i < )
-                graph.setAtE(vertexes.get(i), vertexes.get(i + 1), i / 2 + "", values.get(i / 2).get());
-            }
+            for (int j = 0; j < values.get(i / 2).size(); j++)
+                graph.setAtE(vertexes.get(i), vertexes.get(i + 1), j + "", values.get(i / 2).get(j));
+        }
 
-            return createG(Vertex.createV("N1"), false);
-        } catch (IOException e) { e.printStackTrace(); }
-        return null;
+        return graph;
     }
 
-    public File exportG(String filename) {
+    public File exportG(String filename) throws IOException {
+        if(isCorrectName(filename)) throw new IOException();
+        filename += ".dot";
 
-        return null;
+        Path outputFile = Paths.get(filename);
+        BufferedWriter writer = Files.newBufferedWriter(outputFile, StandardCharsets.UTF_8);
+
+        String direction;
+        if (directedGraph) {
+            writer.write("digraph G { \n");
+            direction = "->";
+        } else {
+            writer.write("graph G { \n");
+            direction = "--";
+        }
+
+        for (Edge e : edges) {
+            String attributes = "";
+            for (int i = 0; i < e.names.size(); i++)
+                attributes = vertexNames.get(i) + " " + vertexValues.get(i) + " ";
+
+            writer.write(e.source.getName() + direction + e.target.getName() + "[label=\"" + attributes + "\"];\n");
+        }
+
+        writer.write("}\n");
+        return new File(filename);
     }
 
     public ArrayList<Vertex> getIncident(Vertex vertex) {
@@ -152,7 +181,7 @@ public class Graph {
         ArrayList<Vertex> incidents = new ArrayList<>();
 
         for (Edge e : edges)
-            if (e.source == vertex)
+            if (e.source == vertex || e.target == vertex)
                 addTwo(incidents, e.source, e.target);
 
         return incidents;
@@ -175,6 +204,8 @@ public class Graph {
         for (Edge e : edges)
             if (e.source == vertex)
                 targets.add(e.target);
+            else if (!directedGraph && e.target == vertex)
+                targets.add(e.source);
 
         return targets;
     }
@@ -185,6 +216,8 @@ public class Graph {
         for (Edge e : edges)
             if (e.target == vertex)
                 sources.add(e.source);
+            else if (!directedGraph && e.source == vertex)
+                sources.add(e.target);
 
         return sources;
     }
@@ -201,7 +234,7 @@ public class Graph {
     }
 
     public ArrayList<Vertex> getVertexes() {
-        return vertexes;
+        return new ArrayList<>(vertexes);
     }
 
     public int getValE(Vertex v1, Vertex v2, String name) {
@@ -277,12 +310,17 @@ public class Graph {
         return null;
     }
 
-    private static ArrayList<Vertex> importVertexes(Scanner input) {
+    private static ArrayList<Vertex> importEdges(Scanner input) {
         ArrayList<Vertex> result = new ArrayList<>();
 
         while (input.hasNext())
             result.add(Vertex.createV(input.next()));
 
+
         return result;
+    }
+
+    private static boolean isCorrectName(String name) {
+        return (name == null || name.equals("") || name.contains(" ") || name.contains(","));
     }
 }

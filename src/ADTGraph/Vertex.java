@@ -22,14 +22,13 @@ public class Vertex {
     }
 
     public static Vertex createV(String name) {
-        if (name == null || name.equals("") || name.contains(" "))
-            return null;
+        if (isCorrectName(name)) return null;
 
         Vertex output = getVertex(name);
         return (output == null) ? (new Vertex(name)) : (output);
     }
 
-    String getName() { return vertexName; }
+    public String getName() { return vertexName; }
     // ##########################################
     // bonus
     // ##########################################
@@ -45,5 +44,9 @@ public class Vertex {
             if (v.getName().equals(name)) return v;
 
         return null;
+    }
+
+    private static boolean isCorrectName(String name) {
+        return (name == null || name.equals("") || name.contains(" ") || name.contains(","));
     }
 }
