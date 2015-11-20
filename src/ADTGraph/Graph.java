@@ -19,7 +19,7 @@ public class Graph {
     // ##########################################
     // vars
     // ##########################################
-    private class Edge {
+    class Edge {
         public final Vertex source;
         public final Vertex target;
 
@@ -36,21 +36,31 @@ public class Graph {
             values.add(value);
         }
 
-        public int getValue(String name) {
+        public Integer getValue(String name) {
             int attributeIndex = names.indexOf(name);
-            if (attributeIndex == -1) return 0;
+            if (attributeIndex == -1) return null;
 
             return values.get(attributeIndex);
         }
+
+        public boolean equals(Object o) {
+            if (this == o) return true;
+            if (!(o instanceof Edge)) return false;
+
+            Edge other = (Edge) o;
+            if (source != other.source || target != other.target) return false;
+            if (!names.equals(other.names) || !values.equals(other.values)) return false;
+            return true;
+        }
     }
 
-    private final boolean directedGraph;
+    final boolean directedGraph;
 
     private ArrayList<Vertex> vertexes = new ArrayList<>();
-    private ArrayList<ArrayList<String>> vertexNames = new ArrayList<>();
-    private ArrayList<ArrayList<Integer>> vertexValues = new ArrayList<>();
+    ArrayList<ArrayList<String>> vertexNames = new ArrayList<>();
+    ArrayList<ArrayList<Integer>> vertexValues = new ArrayList<>();
 
-    private ArrayList<Edge> edges = new ArrayList<>();
+    ArrayList<Edge> edges = new ArrayList<>();
     // ##########################################
     // methods
     // ##########################################
@@ -66,7 +76,7 @@ public class Graph {
     }
 
     public static Graph createG(Vertex vertex) {
-        return createG(vertex, false);
+        return createG(vertex, true);
     }
 
     public static Graph createG(Vertex vertex, boolean directed) {
@@ -75,6 +85,7 @@ public class Graph {
     }
 
     public Graph addVertex(Vertex vertex) {
+        if (vertex == null || vertexes.contains(vertex)) return this;
         vertexes.add(vertex);
         vertexNames.add(new ArrayList<>());
         vertexValues.add(new ArrayList<>());
@@ -82,42 +93,71 @@ public class Graph {
     }
 
     public Graph deleteVertex(Vertex vertex) {
-        if (vertexes.size() > 1) { // precondition
+        if (!vertexes.contains(vertex)) return this;
+        if (vertexes.size() > 1) {
             deleteEdges(vertex);
+
+            int vIndex = vertexes.indexOf(vertex);
+            vertexNames.remove(vIndex);
+            vertexValues.remove(vIndex);
+
             vertexes.remove(vertex);
         }
         return this;
     }
 
     public Graph addEdge(Vertex v1, Vertex v2) {
-        if (vertexes.contains(v1) && vertexes.contains(v2) &&
-                !containsEdge(v1, v2, directedGraph))
+        if (vertexes.contains(v1) && vertexes.contains(v2))
             edges.add(new Edge(v1, v2));
 
         return this;
     }
 
     public Graph deleteEdge(Vertex v1, Vertex v2) {
-        deleteEdges(v1);
-        deleteEdges(v2);
-        return this;
-    }
-
-    public Graph setAtE(Vertex v1, Vertex v2, String name, int value) { //TODO exception
         for (Edge e : edges)
-            if (e.source == v1 && e.target == v2)
-                e.addAttribute(name, value);
+            if (e.source == v1 && e.target == v2) {
+                edges.remove(e);
+                break;
+            }
         return this;
     }
 
-    public Graph setAtV(Vertex vertex, String name, int value) { //TODO exception
+    public Graph setAtE(Vertex v1, Vertex v2, String name, int value) {
+        if (!isCorrectName(name)) return this;
+        for (Edge e : edges)
+            if (e.source == v1 && e.target == v2) {
+                if (e.getValue(name) == null) {
+                    e.addAttribute(name, value);
+                    break;
+                }
+                else {
+                    int nIndex = e.names.indexOf(name);
+                    e.values.set(nIndex, value);
+                    break;
+                }
+            }
+
+        return this;
+    }
+
+    public Graph setAtV(Vertex vertex, String name, int value) {
         if (vertex == null || name == null || name.equals("") || name.contains(" ")) return this;
 
-        if (vertexes.contains(vertex)) addAttribute(vertex, name, value);
+        if (vertexes.contains(vertex)) {
+            int vIndex = vertexes.indexOf(vertex);
+            if (vIndex != -1) {
+                int nIndex = vertexNames.get(vIndex).indexOf(name);
+                if (nIndex != -1) {
+                    vertexValues.get(vIndex).set(nIndex, value);
+                } else {
+                    addAttribute(vertex, name, value);
+                }
+            }
+        }
         return this;
     }
 
-    public static Graph importG(String filename) throws IOException { //TODO exception
+    public static Graph importG(String filename) throws IOException {
         Scanner input = new Scanner(new File(filename)).useDelimiter("\\s*[,\\n]\\s*");
         boolean directedGraph = importGraphVariation(input.nextLine());
 
@@ -150,7 +190,7 @@ public class Graph {
 
     public File exportG(String filename) throws IOException {
         if(isCorrectName(filename)) throw new IOException();
-        filename += ".dot";
+        filename += ".txt";
 
         Path outputFile = Paths.get(filename);
         BufferedWriter writer = Files.newBufferedWriter(outputFile, StandardCharsets.UTF_8);
@@ -173,22 +213,23 @@ public class Graph {
         }
 
         writer.write("}\n");
+        writer.close();
         return new File(filename);
     }
 
     public ArrayList<Vertex> getIncident(Vertex vertex) {
-        if (vertex == null) return null; // precondition
         ArrayList<Vertex> incidents = new ArrayList<>();
 
         for (Edge e : edges)
-            if (e.source == vertex || e.target == vertex)
+            if (e.source == vertex || e.target == vertex) {
                 addTwo(incidents, e.source, e.target);
+            } else if (!directedGraph)
+                addTwo(incidents, e.target, e.source);
 
         return incidents;
     }
 
     public ArrayList<Vertex> getAdjacent(Vertex vertex) {
-        if (vertex == null) return null; // precondition
         ArrayList<Vertex> adjacent = new ArrayList<>();
 
         for (Edge e : edges)
@@ -228,6 +269,10 @@ public class Graph {
         for (Edge e : edges) {
             edgeVertices.add(e.source);
             edgeVertices.add(e.target);
+            if (!directedGraph) {
+                edgeVertices.add(e.target);
+                edgeVertices.add(e.source);
+            }
         }
 
         return edgeVertices;
@@ -240,32 +285,28 @@ public class Graph {
     public int getValE(Vertex v1, Vertex v2, String name) {
         for (Edge e : edges)
             if (e.source == v1 && e.target == v2)
-                return e.getValue(name);
+                return e.getValue(name) == null ? 0 : e.getValue(name);
             else if (!directedGraph && e.source == v2 && e.target == v1)
-                return e.getValue(name);
+                return e.getValue(name) == null ? 0 : e.getValue(name);
 
-
-        return 0;
+        throw new IllegalArgumentException();
     }
 
     public int getValV(Vertex vertex, String name) {
-        if (vertex == null || name == null) return 0;
+        if (vertex == null || name == null) throw new IllegalArgumentException();
 
         int vertexIndex = vertexes.indexOf(vertex);
-        if (vertexIndex == -1) return 0;
+        if (vertexIndex == -1) throw new IllegalArgumentException();
 
         int attributeIndex = vertexNames.get(vertexIndex).indexOf(name);
-        if (attributeIndex == -1) return 0;
+        if (attributeIndex == -1) throw new IllegalArgumentException();
 
         return vertexValues.get(vertexIndex).get(attributeIndex);
     }
     // ##########################################
     // bonus
     // ##########################################
-    @Override
-    public String toString() {
-        return null;
-    }
+
     // ##########################################
     // invisible
     // ##########################################
@@ -321,6 +362,58 @@ public class Graph {
     }
 
     private static boolean isCorrectName(String name) {
-        return (name == null || name.equals("") || name.contains(" ") || name.contains(","));
+        return !(name == null || name.equals("") || name.contains(" ") || name.contains(","));
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj) return true;
+
+        if (!(obj instanceof Graph)) return false;
+
+        Graph other = (Graph) obj;
+        if (directedGraph != ((Graph) obj).directedGraph) return false;
+        if (!arrayEquals(getVertexes(), other.getVertexes())) return false;
+
+        if (vertexes.size() != other.vertexes.size()) return false;
+        for (int i = 0; i < vertexes.size(); i++) {
+            if (vertexNames.get(i).size() != other.vertexNames.get(i).size()) return false;
+            if (vertexValues.get(i).size() != other.vertexValues.get(i).size()) return false;
+
+            if (!arrayEquals(vertexNames, other.vertexNames)) return false;
+            if (!arrayEquals(vertexValues, other.vertexValues)) return false;
+        }
+
+        if (!arrayEquals(edges, other.edges)) return false;
+
+        return true;
+    }
+
+    private static boolean arrayEquals(List<?> arr1, List<?> arr2) {
+        List<?> arr1copy = new LinkedList<>(arr1);
+        Iterator<?> i = arr2.iterator();
+
+        while (i.hasNext()) {
+            Object actualVertex = i.next();
+            if (!arr1copy.contains(actualVertex)) return false;
+            else arr1copy.remove(actualVertex);
+        }
+        return true;
+    }
+
+    private static boolean edgeEquals(List<Vertex> arr1, List<Vertex> arr2) {
+        if (arr1.size() != arr2.size()) return false;
+
+        Iterator<Vertex> i = arr1.iterator();
+        while (i.hasNext()) {
+            Vertex actualVertex = i.next();
+            if (!arr2.contains(i.next())) return false;
+            else arr2.remove(actualVertex);
+        }
+        return true;
+    }
+
+    private static List<Vertex> toList(Vertex... vertex) {
+        return new LinkedList<>(Arrays.asList(vertex));
     }
 }

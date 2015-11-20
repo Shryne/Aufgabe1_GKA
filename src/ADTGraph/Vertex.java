@@ -22,7 +22,7 @@ public class Vertex {
     }
 
     public static Vertex createV(String name) {
-        if (isCorrectName(name)) return null;
+        if (!isCorrectName(name)) return null;
 
         Vertex output = getVertex(name);
         return (output == null) ? (new Vertex(name)) : (output);
@@ -47,6 +47,6 @@ public class Vertex {
     }
 
     private static boolean isCorrectName(String name) {
-        return (name == null || name.equals("") || name.contains(" ") || name.contains(","));
+        return !(name == null || name.equals("") || name.contains(" ") || name.contains(","));
     }
 }

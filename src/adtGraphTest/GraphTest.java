@@ -4,7 +4,6 @@ import ADTGraph.Graph;
 import ADTGraph.Vertex;
 import org.junit.Test;
 
-import java.lang.reflect.Array;
 import java.util.*;
 
 import static ADTGraph.Graph.importG;
